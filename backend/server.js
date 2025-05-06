@@ -10,7 +10,6 @@ app.use(cors({
 }));
 app.use(bodyParser.json());
 
-// In-memory "DB"
 const users = new Map();
 
 app.post("/api/signup", (req, res) => {
@@ -33,5 +32,5 @@ app.post("/api/login", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ 서버 실행 중: http://localhost:${PORT}`);
+  console.log(`서버 실행 중: http://localhost:${PORT}`);
 });
