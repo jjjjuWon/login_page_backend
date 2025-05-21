@@ -10,8 +10,7 @@ const io = new Server(server, {
   cors: {
     origin: "https://login-page-frontend-qp6d.vercel.app",
     methods: ["GET", "POST"],
-    credentials: true,
-    transports: ['websocket']
+    credentials: true
   }
 });
 
