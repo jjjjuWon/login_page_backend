@@ -8,7 +8,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "https://login-page-frontend-qp6d.vercel.app",
+    origin: ["https://login-page-frontend-qp6d.vercel.app", "http://localhost:3000"],
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -17,7 +17,7 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
-  origin: "https://login-page-frontend-qp6d.vercel.app",
+  origin: ["https://login-page-frontend-qp6d.vercel.app", "http://localhost:3000"],
   credentials: true
 }));
 app.use(bodyParser.json());
