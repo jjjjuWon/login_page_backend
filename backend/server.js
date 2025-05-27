@@ -141,6 +141,6 @@ app.post("/api/login", (req, res) => {
   res.json({ message: "로그인 성공", token: fakeToken, name: user.name });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`서버 실행 중: http://localhost:${PORT}`);
 });
