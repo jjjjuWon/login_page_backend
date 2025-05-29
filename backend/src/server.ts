@@ -1,8 +1,29 @@
-const express = require("express");
-const cors = require("cors");
-const bodyParser = require("body-parser");
-const http = require("http");
-const { Server } = require("socket.io");
+import express, { Request, Response } from "express";
+import cors from "cors";
+import bodyParser from "body-parser";
+import http from "http";
+import { Server, Socket } from "socket.io";
+
+interface User {
+  name: string;
+  pw: string;
+}
+
+interface UserData {
+  name: string;
+}
+
+interface MessageData {
+  sender: string;
+  message: string;
+  roomId?: string;
+  timestamp?: string;
+}
+
+interface Room {
+  name: string;
+  users: Set<string>;
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -22,9 +43,9 @@ app.use(cors({
 }));
 app.use(bodyParser.json());
 
-const users = new Map();
-const onlineUsers = new Map();
-const rooms = new Map();
+const users = new Map<string, User>();
+const onlineUsers = new Map<string, UserData>();
+const rooms = new Map<string, Room>();
 
 // 기본 채팅방 생성
 rooms.set("general", {
@@ -33,15 +54,15 @@ rooms.set("general", {
 });
 
 // Socket.IO 연결 처리
-io.on("connection", (socket) => {
+io.on("connection", (socket: Socket) => {
   console.log("사용자 연결됨:", socket.id);
 
   // 사용자 로그인 처리
-  socket.on("user_login", (userData) => {
+  socket.on("user_login", (userData: UserData) => {
     onlineUsers.set(socket.id, userData);
     // 기본 채팅방에 참가
     socket.join("general");
-    rooms.get("general").users.add(socket.id);
+    rooms.get("general")?.users.add(socket.id);
     
     // 모든 채팅방 목록 전송
     const roomList = Array.from(rooms.entries()).map(([id, room]) => ({
@@ -52,17 +73,27 @@ io.on("connection", (socket) => {
     io.emit("room_list", roomList);
     
     // 현재 채팅방의 사용자 목록 전송
-    io.to("general").emit("user_list", Array.from(rooms.get("general").users).map(id => onlineUsers.get(id)));
+    const generalRoom = rooms.get("general");
+    if (generalRoom) {
+      io.to("general").emit("user_list", 
+        Array.from(generalRoom.users).map(id => onlineUsers.get(id))
+      );
+    }
   });
 
   // 채팅방 참가
-  socket.on("join_room", (roomId) => {
+  socket.on("join_room", (roomId: string) => {
     // 이전 채팅방에서 나가기
     const currentRoom = Array.from(socket.rooms).find(room => room !== socket.id);
     if (currentRoom && rooms.has(currentRoom)) {
-      rooms.get(currentRoom).users.delete(socket.id);
-      socket.leave(currentRoom);
-      io.to(currentRoom).emit("user_list", Array.from(rooms.get(currentRoom).users).map(id => onlineUsers.get(id)));
+      const room = rooms.get(currentRoom);
+      if (room) {
+        room.users.delete(socket.id);
+        socket.leave(currentRoom);
+        io.to(currentRoom).emit("user_list", 
+          Array.from(room.users).map(id => onlineUsers.get(id))
+        );
+      }
     }
 
     // 새 채팅방 참가
@@ -73,22 +104,27 @@ io.on("connection", (socket) => {
       });
     }
     socket.join(roomId);
-    rooms.get(roomId).users.add(socket.id);
-    
-    // 채팅방 사용자 목록 업데이트
-    io.to(roomId).emit("user_list", Array.from(rooms.get(roomId).users).map(id => onlineUsers.get(id)));
-    
-    // 채팅방 목록 업데이트
-    const roomList = Array.from(rooms.entries()).map(([id, room]) => ({
-      id,
-      name: room.name,
-      userCount: room.users.size
-    }));
-    io.emit("room_list", roomList);
+    const room = rooms.get(roomId);
+    if (room) {
+      room.users.add(socket.id);
+      
+      // 채팅방 사용자 목록 업데이트
+      io.to(roomId).emit("user_list", 
+        Array.from(room.users).map(id => onlineUsers.get(id))
+      );
+      
+      // 채팅방 목록 업데이트
+      const roomList = Array.from(rooms.entries()).map(([id, room]) => ({
+        id,
+        name: room.name,
+        userCount: room.users.size
+      }));
+      io.emit("room_list", roomList);
+    }
   });
 
   // 메시지 전송
-  socket.on("send_message", (messageData) => {
+  socket.on("send_message", (messageData: MessageData) => {
     const roomId = messageData.roomId || "general";
     io.to(roomId).emit("receive_message", {
       ...messageData,
@@ -104,7 +140,9 @@ io.on("connection", (socket) => {
       rooms.forEach((room, roomId) => {
         if (room.users.has(socket.id)) {
           room.users.delete(socket.id);
-          io.to(roomId).emit("user_list", Array.from(room.users).map(id => onlineUsers.get(id)));
+          io.to(roomId).emit("user_list", 
+            Array.from(room.users).map(id => onlineUsers.get(id))
+          );
         }
       });
       
@@ -122,7 +160,7 @@ io.on("connection", (socket) => {
   });
 });
 
-app.post("/api/signup", (req, res) => {
+app.post("/api/signup", (req: Request, res: Response) => {
   const { name, email, pw } = req.body;
   if (users.has(email)) {
     return res.status(409).json({ message: "이미 가입된 이메일입니다." });
@@ -131,7 +169,7 @@ app.post("/api/signup", (req, res) => {
   res.status(201).json({ message: "회원가입 성공" });
 });
 
-app.post("/api/login", (req, res) => {
+app.post("/api/login", (req: Request, res: Response) => {
   const { email, pw } = req.body;
   const user = users.get(email);
   if (!user || user.pw !== pw) {
@@ -141,6 +179,6 @@ app.post("/api/login", (req, res) => {
   res.json({ message: "로그인 성공", token: fakeToken, name: user.name });
 });
 
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(Number(PORT), '0.0.0.0', () => {
   console.log(`서버 실행 중: http://localhost:${PORT}`);
-});
+}); 
