@@ -16,6 +16,9 @@ primary_region = 'hkg'
   min_machines_running = 0
   processes = ['app']
 
+  [http_service.websocket]
+    enabled = true
+
 [[vm]]
   memory = '1gb'
   cpu_kind = 'shared'
