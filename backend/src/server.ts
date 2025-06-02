@@ -48,7 +48,7 @@ const onlineUsers = new Map<string, UserData>();
 const rooms = new Map<string, Room>();
 
 // 기본 채팅방 생성
-rooms.set("general", {
+rooms.set("General", {
   name: "일반 채팅방",
   users: new Set()
 });
@@ -61,8 +61,8 @@ io.on("connection", (socket: Socket) => {
   socket.on("user_login", (userData: UserData) => {
     onlineUsers.set(socket.id, userData);
     // 기본 채팅방에 참가
-    socket.join("general");
-    rooms.get("general")?.users.add(socket.id);
+    socket.join("General");
+    rooms.get("General")?.users.add(socket.id);
     
     // 모든 채팅방 목록 전송
     const roomList = Array.from(rooms.entries()).map(([id, room]) => ({
@@ -73,9 +73,9 @@ io.on("connection", (socket: Socket) => {
     io.emit("room_list", roomList);
     
     // 현재 채팅방의 사용자 목록 전송
-    const generalRoom = rooms.get("general");
+    const generalRoom = rooms.get("General");
     if (generalRoom) {
-      io.to("general").emit("user_list", 
+      io.to("General").emit("user_list", 
         Array.from(generalRoom.users).map(id => onlineUsers.get(id))
       );
     }
